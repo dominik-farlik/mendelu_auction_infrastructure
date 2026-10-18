@@ -19,6 +19,18 @@ services:
     networks:
       - auction-network
 
+  migrate:
+    image: ghcr.io/dominik-farlik/mendelu_auction_backend:latest
+    env_file:
+      - .env
+    command: alembic upgrade head
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - auction-network
+    restart: "no"
+
   backend:
     image: ghcr.io/dominik-farlik/mendelu_auction_backend:latest
     restart: always
@@ -27,6 +39,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - auction-network
 
