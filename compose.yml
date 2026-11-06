@@ -1,8 +1,7 @@
-version: '3.8'
-
 services:
   reverse-proxy:
     image: nginx:alpine
+    restart: always
     ports:
       - "8080:80"
     volumes:
@@ -36,6 +35,8 @@ services:
     restart: always
     env_file:
       - .env
+    volumes:
+      - uploads:/app/static/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -61,6 +62,7 @@ services:
 
 volumes:
   postgres_data:
+  uploads:
 
 networks:
   auction-network:
