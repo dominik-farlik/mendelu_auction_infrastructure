@@ -1,9 +1,17 @@
+# Logy kontejnerů s rotací, aby časem nezaplnily disk serveru.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   reverse-proxy:
     image: nginx:alpine
     restart: always
+    # Jen lokálně: zvenku je dostupný pouze Apache (80/443), který sem přeposílá.
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -11,12 +19,14 @@ services:
       - backend
     networks:
       - auction-network
+    logging: *default-logging
 
   frontend:
     image: ghcr.io/dominik-farlik/mendelu_auction_frontend:latest
     restart: always
     networks:
       - auction-network
+    logging: *default-logging
 
   migrate:
     image: ghcr.io/dominik-farlik/mendelu_auction_backend:latest
@@ -29,6 +39,7 @@ services:
     networks:
       - auction-network
     restart: "no"
+    logging: *default-logging
 
   backend:
     image: ghcr.io/dominik-farlik/mendelu_auction_backend:latest
@@ -44,6 +55,7 @@ services:
         condition: service_completed_successfully
     networks:
       - auction-network
+    logging: *default-logging
 
   db:
     image: postgres:15-alpine
@@ -59,6 +71,7 @@ services:
       retries: 5
     networks:
       - auction-network
+    logging: *default-logging
 
 volumes:
   postgres_data:
