@@ -1,0 +1,3 @@
+# Tajné hodnoty a zálohy (osobní údaje) nepatří do gitu.
+.env
+backups/

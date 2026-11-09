@@ -70,11 +70,50 @@ docker compose up -d
 Migrace databáze proběhnou automaticky (služba `migrate`) před startem backendu.
 Po změně `nginx.conf` stačí `docker compose restart reverse-proxy`.
 
+## Zálohy
+
+[backup.sh](backup.sh) zazálohuje databázi (`pg_dump`) a nahrané obrázky (volume `uploads`)
+do `backups/` a smaže zálohy starší než 14 dní. Dump před uložením ověří přes `pg_restore --list`;
+když něco selže, skončí chybou a poslední platnou zálohu nepřepíše. Soubory čte jen vlastník
+(obsahují osobní údaje). Složka `backups/` je v `.gitignore`.
+
+Ruční záloha:
+
+```bash
+./backup.sh
+```
+
+**Automaticky každou noc** (`crontab -e` pod uživatelem, který spouští `docker compose`):
+
+```
+15 3 * * * /home/xfarlik/dobrotrh/backup.sh >> /home/xfarlik/dobrotrh/backups/backup.log 2>&1
+```
+
+Počet dní a složku jde změnit proměnnými, např. `KEEP_DAYS=30 BACKUP_DIR=/srv/zalohy ./backup.sh`.
+
+**Kopie mimo server:** zálohy na stejném serveru nepomůžou, když o server přijdete.
+Občas je stáhněte jinam, např. ze svého počítače:
+
+```bash
+rsync -av xfarlik@dobrotrhonline.mendelu.cz:dobrotrh/backups/ ~/dobrotrh-zalohy/
+```
+
+### Obnova ze zálohy
+
+Přepíše současná data, proto nejdřív udělejte čerstvou zálohu (`./backup.sh`).
+
+```bash
+docker compose stop backend
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < backups/dobrotrh_db_<datum>.dump
+docker compose run --rm --no-deps -T backend tar -C /app/static -xzf - < backups/dobrotrh_uploads_<datum>.tar.gz
+docker compose start backend
+```
+
 ## Užitečné příkazy
 
 ```bash
 docker compose ps                                  # stav kontejnerů
 docker compose logs -f backend                     # logy backendu
 docker compose logs -f reverse-proxy               # logy nginx
-docker compose exec db pg_dump -U <POSTGRES_USER> <POSTGRES_DB> > zaloha.sql   # záloha DB
+./backup.sh                                        # záloha DB a obrázků
 ```
